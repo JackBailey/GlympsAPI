@@ -115,7 +115,7 @@ def getGame(appid):
 
 
 def background():
-	print("OK")
+	print("Refreshing in background....")
 	#### CONFIG
 
 	gamesToList = 80 ## Default if it isn't specified
@@ -239,10 +239,12 @@ def totalHours():
 	response.headers.add('Access-Control-Allow-Origin', '*')
 	return response
 
+print("Starting background tasks...")
+
 sched = BackgroundScheduler(daemon=True)
 sched.add_job(background,'interval',minutes=60)
 sched.start()
 
-print("ok")
+print("Starting server...")
 http_server = WSGIServer(('', 5000), app)
 http_server.serve_forever()

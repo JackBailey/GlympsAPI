@@ -5,3 +5,4 @@ Pillow
 hurry.filesize
 python-dotenv
 APScheduler 
+requests
