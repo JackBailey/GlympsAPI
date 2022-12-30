@@ -212,7 +212,11 @@ def topgames(path):
 def img(path):
 	path = "img/" + path
 	filetype = mimetypes.guess_type(path)[1] 
-	return send_file(path + ".webp", mimetype='filetype')	
+	path += ".webp"
+	if (os.path.isfile(path)):
+		return send_file(path, mimetype='filetype')	
+	else:
+		return "Invalid Image."
 
 @app.route("/topgames")
 def defaulttopgames():
