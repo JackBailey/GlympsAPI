@@ -1,8 +1,8 @@
 version: "3"
 services:
     glympsapi:
-        build:
-            context: .
+        image: jackbailey/glympsapi
         ports:
             - 5000:5000
-        env_file: .env
+        environment:
+            - STEAM_API_KEY=
