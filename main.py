@@ -53,7 +53,7 @@ def diff(before,after):
 
 def imgConv(url, game):
 	global startingImages, endingImages
-	directory = "img/"
+	directory = "img"
 	response = requests.get(url)
 	img_data = response.content
 	content_type = response.headers['content-type']
@@ -67,7 +67,8 @@ def imgConv(url, game):
 			name += ""
 		else:
 			name += char
-	imgIn = directory + name + extension
+	
+	imgIn = os.path.join(os.getcwd(),directory,name+extension)
 	with open(imgIn, 'wb') as handler:
 		handler.write(img_data)
 
@@ -77,7 +78,7 @@ def imgConv(url, game):
 	image = Image.open(imgIn)
 	image.thumbnail((860, 300)) # Resize
 	image = image.convert('RGB') # Convert to webp
-	output = directory + name + ".webp"
+	output = os.path.join(os.getcwd(),directory,name+".webp")
 	image.save(output, 'webp',optimize=True,quality=60,subsampling=0) # compress
 	after = os.path.getsize(output)
 	endingImages += after
