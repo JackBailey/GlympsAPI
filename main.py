@@ -1,6 +1,6 @@
-import os, json, logging, requests, threading, time,datetime, schedule, traceback
+import os, json, logging, requests, traceback
 
-from flask import Flask, render_template, jsonify, request, send_file
+from flask import Flask, render_template, jsonify, send_file
 from gevent.pywsgi import WSGIServer
 from flask_cors import CORS
 import sys, os
@@ -10,6 +10,7 @@ import mimetypes
 import string
 from hurry.filesize import size
 from dotenv import load_dotenv
+from apscheduler.schedulers.background import BackgroundScheduler
 
 load_dotenv()
 
@@ -34,14 +35,14 @@ for x in range(len(requiredFiles)):
 			json.dump(requiredFiles[x]["default"], file)
 
 
-print(os.environ.get("STEAM_API_KEY"))
-
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
 
 startingImages = 0
 endingImages = 0
-#sorted(data.values(), key=itemgetter(name))
+
+app = Flask('app')
+CORS(app)
 
 def diff(before,after):
 	return str(size(before)) + " => " + str(size(after)) + " (" + str(round(((before - after)/before)*100,1)) + "%) " 
@@ -114,6 +115,7 @@ def getGame(appid):
 
 
 def background():
+	print("OK")
 	#### CONFIG
 
 	gamesToList = 80 ## Default if it isn't specified
@@ -193,68 +195,54 @@ def background():
 		json.dump(gameData, outfile)
 
 
-def flaskBG():
-	app = Flask('app')
-	CORS(app)
 
-	@app.route('/')
-	def index():
-		return render_template("index.html")
+@app.route('/')
+def index():
+	return render_template("index.html")
 
-	@app.route("/top<path:path>games")
-	def topgames(path):
-		with open('cache.json') as json_file:
-			data = json.load(json_file)
-		response = jsonify(data[0:int(path)])
-		response.headers.add('Access-Control-Allow-Origin', '*')
-		return response
+@app.route("/top<path:path>games")
+def topgames(path):
+	with open('cache.json') as json_file:
+		data = json.load(json_file)
+	response = jsonify(data[0:int(path)])
+	response.headers.add('Access-Control-Allow-Origin', '*')
+	return response
 
-	@app.route("/img/<path:path>")
-	def img(path):
-		path = "img/" + path
-		filetype = mimetypes.guess_type(path)[1] 
-		return send_file(path + ".webp", mimetype='filetype')	
+@app.route("/img/<path:path>")
+def img(path):
+	path = "img/" + path
+	filetype = mimetypes.guess_type(path)[1] 
+	return send_file(path + ".webp", mimetype='filetype')	
 
-	@app.route("/topgames")
-	def defaulttopgames():
-		with open('cache.json') as json_file:
-			data = json.load(json_file)
-		response = jsonify(data[0:10])
-		response.headers.add('Access-Control-Allow-Origin', '*')
-		return response
+@app.route("/topgames")
+def defaulttopgames():
+	with open('cache.json') as json_file:
+		data = json.load(json_file)
+	response = jsonify(data[0:10])
+	response.headers.add('Access-Control-Allow-Origin', '*')
+	return response
 
-	@app.route("/totalhours")
-	def totalHours():
-		with open('cache.json') as json_file:
-			data = json.load(json_file)
-		jsonData = {
-			"minutes":0,
-			"hours":0,
-		}
-		for game in data:
-			jsonData["minutes"] += game["playtime_forever"]
+@app.route("/totalhours")
+def totalHours():
+	with open('cache.json') as json_file:
+		data = json.load(json_file)
+	jsonData = {
+		"minutes":0,
+		"hours":0,
+	}
+	for game in data:
+		jsonData["minutes"] += game["playtime_forever"]
 
-		jsonData["hours"] = round(jsonData["minutes"]/60)
-		
-		response = jsonify(jsonData)
-		response.headers.add('Access-Control-Allow-Origin', '*')
-		return response
+	jsonData["hours"] = round(jsonData["minutes"]/60)
+	
+	response = jsonify(jsonData)
+	response.headers.add('Access-Control-Allow-Origin', '*')
+	return response
 
-	http_server = WSGIServer(('', 5000), app)
-	http_server.serve_forever()
+sched = BackgroundScheduler(daemon=True)
+sched.add_job(background,'interval',minutes=60)
+sched.start()
 
-
-background()
-
-# schedule.every(1).second.do(background)
-
-# # b = threading.Thread(name='background', target=background)
-# # f = threading.Thread(name='flaskBG', target=flaskBG)
-
-
-# # b.start()
-# # f.start()
-
-# while True:
-# 	schedule.run_pending()
-# 	time.sleep(1)
+print("ok")
+http_server = WSGIServer(('', 5000), app)
+http_server.serve_forever()

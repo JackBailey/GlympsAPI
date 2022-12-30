@@ -4,3 +4,4 @@ flask_cors
 Pillow
 hurry.filesize
 python-dotenv
+APScheduler 
