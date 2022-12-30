@@ -36,8 +36,9 @@ for x in range(len(requiredFiles)):
 
 requiredDirectories = ["img"]
 for x in range(len(requiredDirectories)):
-	if (not os.path.isdir(requiredFiles[x])):
-		os.mkdir(x)
+	Dir = requiredDirectories[x]
+	if (not os.path.isdir(Dir)):
+		os.mkdir(Dir)
 
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
