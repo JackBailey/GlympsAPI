@@ -5,4 +5,4 @@ services:
         ports:
             - 5000:5000
         environment:
-            - STEAM_API_KEY=
+            - STEAM_API_KEY=F77200BEA677FCCEA2BF59EE40DEA994

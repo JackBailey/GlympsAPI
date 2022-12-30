@@ -34,6 +34,10 @@ for x in range(len(requiredFiles)):
 		with open(requiredFiles[x]["name"], "w") as file:
 			json.dump(requiredFiles[x]["default"], file)
 
+requiredDirectories = ["img"]
+for x in range(len(requiredDirectories)):
+	if (not os.path.isdir(requiredFiles[x])):
+		os.mkdir(x)
 
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
