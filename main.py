@@ -1,4 +1,4 @@
-import os, json, logging, requests, threading, time,datetime
+import os, json, logging, requests, threading, time,datetime, schedule, traceback
 
 from flask import Flask, render_template, jsonify, request, send_file
 from gevent.pywsgi import WSGIServer
@@ -12,6 +12,27 @@ from hurry.filesize import size
 from dotenv import load_dotenv
 
 load_dotenv()
+
+requiredFiles = [
+	{
+		"name": "cache.json",
+		"default": []
+	},
+	{
+		"name": "steamstore.json",
+		"default": {}
+	},
+	{
+		"name": "manualGames.json",
+		"default": []
+	}
+]
+
+for x in range(len(requiredFiles)):
+	if (not os.path.isfile(requiredFiles[x]["name"])):
+		with open(requiredFiles[x]["name"], "w") as file:
+			json.dump(requiredFiles[x]["default"], file)
+
 
 print(os.environ.get("STEAM_API_KEY"))
 
@@ -64,107 +85,113 @@ def imgConv(url, game):
 def pretty(jsonIn):
 		return json.dumps(jsonIn, indent=1, sort_keys=True)
 
+def getGame(appid):
+	url = "https://store.steampowered.com/api/appdetails?appids=" + str(appid)
+	r = requests.get(url)
+	result = r.json()[str(appid)]["data"]
+
+	gameInfo = {
+		"header_image": result["header_image"],
+		"name": result["name"]
+	}
+
+	with open('steamstore.json') as json_file:
+		data = json.load(json_file)
+
+
+	data[int(appid)] = gameInfo
+
+	try:
+		with open("steamstore.json", "w") as outfile: 
+			
+			json.dump(data, outfile)
+	except Exception as e:
+		exc_type, exc_obj, exc_tb = sys.exc_info()
+		fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+		print(exc_type, fname, exc_tb.tb_lineno)
+
+	return gameInfo
+
+
 def background():
-	print("***** RAN *******")
+	#### CONFIG
 
+	gamesToList = 80 ## Default if it isn't specified
+	steamID = 76561198363384787
 
-	while True:
-		timeStart = datetime.datetime.now()
-		#### CONFIG
+	####
 
-		gamesToList = 80 ## Default if it isn't specified
-		steamID = 76561198363384787
+	gamesToList += 1
+	
+	url = "http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=" + os.environ.get("STEAM_API_KEY") + f"&steamid={steamID}&format=json"
+	r = requests.get(url)
+	dictResult = json.loads(r.text)["response"]["games"]
+	
+	with open('manualGames.json') as json_file:
+		manualGames = json.load(json_file)
 
-		####
+	with open('cache.json') as json_file:
+		cache = json.load(json_file)
 
-		gamesToList += 1
-		
-		url = "http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=" + os.environ.get("STEAM_API_KEY") + f"&steamid={steamID}&format=json"
-		r = requests.get(url)
-		dictResult = json.loads(r.text)["response"]["games"]
-		
-		with open('manualGames.json') as json_file:
-			manualGames = json.load(json_file)
+	for game in manualGames:
+		dictResult.append(game)
 
-		with open('cache.json') as json_file:
-			cache = json.load(json_file)
+	sort = sorted(dictResult, key=lambda k: k['playtime_forever'])
+	gameData = []
+	gameList = sort[:gamesToList*-1:-1]
 
-		for game in manualGames:
-			dictResult.append(game)
-
-		sort = sorted(dictResult, key=lambda k: k['playtime_forever'])
-		gameData = []
-		gameList = sort[:gamesToList*-1:-1]
-
-		for item in range(len(gameList)):
+	for item in range(len(gameList)):
+		try:
+			currentGame = gameList[item]
 			try:
-				currentGame = gameList[item]
+				platform = currentGame["platform"]
+			except:
+				platform = "steam"
+			if platform == "steam":
+				with open('steamstore.json') as json_file:
+					data = json.load(json_file)
 				try:
-					platform = currentGame["platform"]
-				except:
-					platform = "steam"
-				if platform == "steam":
-					with open('steamstore.json') as json_file:
-						data = json.load(json_file)
-					try:
-						gameInfo = data[str(currentGame["appid"])]
-					except Exception as e:
-						
-						print("New Game, adding to database")
-						url = "https://api.jackbailey.uk/steamstore/"+str(currentGame["appid"])
-						r = requests.get(url)
-						gameInfo = r.json()["data"]
-						#print(int(currentGame["appid"]))
+					gameInfo = data[str(currentGame["appid"])]
+				except Exception as e:
 
-						data[int(currentGame["appid"])] = gameInfo
-
-						try:
-							with open("steamstore.json", "w") as outfile: 
-								
-								json.dump(data, outfile)
-						except Exception as e:
-							exc_type, exc_obj, exc_tb = sys.exc_info()
-							fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-							print(exc_type, fname, exc_tb.tb_lineno)
-
-					### Download + add new image
-
-					outputImage = imgConv(gameInfo["header_image"],gameInfo["name"])
-
-
-					newGame = {
-						"name":gameInfo["name"],
-						"image":outputImage,
-						"playtime_forever": currentGame["playtime_forever"],
-						"platform": "Steam",
-						"link":"https://store.steampowered.com/app/"+ str(currentGame["appid"])
-					}
-
-				else:
+					# header_image
+					# name
 					
-					outputImage = imgConv(currentGame["image"],currentGame["name"])
-					newGame = {
-						"name": currentGame["name"],
-						"image": outputImage,
-						"playtime_forever": currentGame["playtime_forever"],
-						"platform": currentGame["platform"],
-						"link":currentGame["link"]
-					}
-				gameData.append(newGame)
-				name = newGame["name"]
-				#print(f" {name}")
-			except Exception as e:
-				exc_type, exc_obj, exc_tb = sys.exc_info()
-				fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-				print(exc_type, fname, exc_tb.tb_lineno)
+					print("New Game, adding to database" + str(currentGame["appid"]))
+					gameInfo = getGame(currentGame["appid"])
+					print(gameInfo["name"])
+					
+				### Download + add new image
+
+				outputImage = imgConv(gameInfo["header_image"],gameInfo["name"])
 
 
-		with open("cache.json", "w") as outfile: 
-			json.dump(gameData, outfile)
+				newGame = {
+					"name":gameInfo["name"],
+					"image":outputImage,
+					"playtime_forever": currentGame["playtime_forever"],
+					"platform": "Steam",
+					"link":"https://store.steampowered.com/app/"+ str(currentGame["appid"])
+				}
 
-		#print(diff(startingImages,endingImages))
-		timeEnd = datetime.datetime.now()
-		time.sleep(900)
+			else:
+				
+				outputImage = imgConv(currentGame["image"],currentGame["name"])
+				newGame = {
+					"name": currentGame["name"],
+					"image": outputImage,
+					"playtime_forever": currentGame["playtime_forever"],
+					"platform": currentGame["platform"],
+					"link":currentGame["link"]
+				}
+			gameData.append(newGame)
+		except Exception:
+			print(traceback.format_exc())
+
+
+	with open("cache.json", "w") as outfile: 
+		json.dump(gameData, outfile)
+
 
 def flaskBG():
 	app = Flask('app')
@@ -217,11 +244,17 @@ def flaskBG():
 	http_server.serve_forever()
 
 
-b = threading.Thread(name='background', target=background)
-f = threading.Thread(name='flaskBG', target=flaskBG)
-cli = threading.Thread(name='cli', target=cli)
+background()
+
+# schedule.every(1).second.do(background)
+
+# # b = threading.Thread(name='background', target=background)
+# # f = threading.Thread(name='flaskBG', target=flaskBG)
 
 
-b.start()
-f.start()
-cli.start()
+# # b.start()
+# # f.start()
+
+# while True:
+# 	schedule.run_pending()
+# 	time.sleep(1)
