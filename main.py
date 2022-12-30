@@ -210,9 +210,8 @@ def topgames(path):
 
 @app.route("/img/<path:path>")
 def img(path):
-	path = "img/" + path
+	path = os.path.join(os.getcwd(),"img",path + ".webp" )
 	filetype = mimetypes.guess_type(path)[1] 
-	path += ".webp"
 	if (os.path.isfile(path)):
 		return send_file(path, mimetype='filetype')	
 	else:
@@ -244,7 +243,7 @@ def totalHours():
 	return response
 
 print("Starting background tasks...")
-
+background()
 sched = BackgroundScheduler(daemon=True)
 sched.add_job(background,'interval',minutes=60)
 sched.start()
