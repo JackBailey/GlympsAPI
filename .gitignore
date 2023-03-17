@@ -1,5 +1,4 @@
 img
 .upm
-cache.json
-steamstore.json
 .env
+/config

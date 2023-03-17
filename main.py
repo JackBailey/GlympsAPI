@@ -29,9 +29,12 @@ requiredFiles = [
 	}
 ]
 
+if (not os.path.isdir("config")):
+	os.mkdir("config")
+
 for x in range(len(requiredFiles)):
-	if (not os.path.isfile(requiredFiles[x]["name"])):
-		with open(requiredFiles[x]["name"], "w") as file:
+	if (not os.path.isfile("config/" + requiredFiles[x]["name"])):
+		with open("config/" + requiredFiles[x]["name"], "w") as file:
 			json.dump(requiredFiles[x]["default"], file)
 
 requiredDirectories = ["img"]
@@ -102,14 +105,14 @@ def getGame(appid):
 		"name": result["name"]
 	}
 
-	with open('steamstore.json') as json_file:
+	with open('config/steamstore.json') as json_file:
 		data = json.load(json_file)
 
 
 	data[int(appid)] = gameInfo
 
 	try:
-		with open("steamstore.json", "w") as outfile: 
+		with open("config/steamstore.json", "w") as outfile: 
 			
 			json.dump(data, outfile)
 	except Exception as e:
@@ -130,15 +133,18 @@ def background():
 	####
 
 	gamesToList += 1
+
+	print(os.environ.get("STEAM_API_KEY"))
 	
 	url = "http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=" + os.environ.get("STEAM_API_KEY") + f"&steamid={steamID}&format=json"
 	r = requests.get(url)
+	print(r.text)
 	dictResult = json.loads(r.text)["response"]["games"]
 	
-	with open('manualGames.json') as json_file:
+	with open('config/manualGames.json') as json_file:
 		manualGames = json.load(json_file)
 
-	with open('cache.json') as json_file:
+	with open('config/cache.json') as json_file:
 		cache = json.load(json_file)
 
 	for game in manualGames:
@@ -156,7 +162,7 @@ def background():
 			except:
 				platform = "steam"
 			if platform == "steam":
-				with open('steamstore.json') as json_file:
+				with open('config/steamstore.json') as json_file:
 					data = json.load(json_file)
 				try:
 					gameInfo = data[str(currentGame["appid"])]
@@ -197,7 +203,7 @@ def background():
 			print(traceback.format_exc())
 
 
-	with open("cache.json", "w") as outfile: 
+	with open("config/cache.json", "w") as outfile: 
 		json.dump(gameData, outfile)
 
 
@@ -208,7 +214,7 @@ def index():
 
 @app.route("/top<path:path>games")
 def topgames(path):
-	with open('cache.json') as json_file:
+	with open('config/cache.json') as json_file:
 		data = json.load(json_file)
 	response = jsonify(data[0:int(path)])
 	response.headers.add('Access-Control-Allow-Origin', '*')
@@ -225,7 +231,7 @@ def img(path):
 
 @app.route("/topgames")
 def defaulttopgames():
-	with open('cache.json') as json_file:
+	with open('config/cache.json') as json_file:
 		data = json.load(json_file)
 	response = jsonify(data[0:10])
 	response.headers.add('Access-Control-Allow-Origin', '*')
@@ -233,7 +239,7 @@ def defaulttopgames():
 
 @app.route("/totalhours")
 def totalHours():
-	with open('cache.json') as json_file:
+	with open('config/cache.json') as json_file:
 		data = json.load(json_file)
 	jsonData = {
 		"minutes":0,
