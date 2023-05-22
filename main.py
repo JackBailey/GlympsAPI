@@ -89,7 +89,7 @@ def imgConv(url, game):
 	#print(diff(before,after)," - ", str(name))
 	os.remove(imgIn)
 
-	return "https://api.glymps.xyz/"+ directory + "/" + name
+	return "https://glymps.jackbailey.uk/"+ directory + "/" + name
 
 
 def pretty(jsonIn):
@@ -228,6 +228,17 @@ def img(path):
 		return send_file(path, mimetype='filetype')	
 	else:
 		return "Invalid Image."
+
+@app.route("/game/<path:path>")
+def getSingleGame(path):
+	with open('config/cache.json') as json_file:
+		data = json.load(json_file)
+		for game in data:
+			if game["name"] == path:
+				response = jsonify(game)
+				response.headers.add('Access-Control-Allow-Origin', '*')
+				return response
+	return "404", 404
 
 @app.route("/topgames")
 def defaulttopgames():
