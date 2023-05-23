@@ -89,7 +89,7 @@ def imgConv(url, game):
 	#print(diff(before,after)," - ", str(name))
 	os.remove(imgIn)
 
-	return "https://glymps.jackbailey.uk/"+ directory + "/" + name
+	return "https://api.glymps.jackbailey.uk/"+ directory + "/" + name
 
 
 def pretty(jsonIn):
